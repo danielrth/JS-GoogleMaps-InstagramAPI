@@ -1,0 +1,118 @@
+<html>
+<head>
+<title>Jenna's Ideas</title>
+
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCTU-ZgtiJ8EpdN6Xt4I5RR6B6As1xb1t8&callback=initMap"></script>
+<style type="text/css">
+	div.img-post {
+		display: inline-block;
+		font-size: 18px;
+		text-align: center;
+		margin: 10px 10px;
+	}
+	div img {
+		width: 200px;
+		height: 200px;
+	}
+	div#map {
+		width: 100%;
+		height: 500px;
+	}
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+<h3 id="selectedtag"></h3>
+Select tag: <select id="slt-tags"><option value=0>All</option></select>
+
+<div id="posts">
+</div>
+
+</body>
+
+<script type="text/javascript">
+var myLatLng = {lat: 30, lng: 131.044};
+var map = null;
+function initMap() {
+
+    map = new google.maps.Map(document.getElementById('map'), {
+      zoom: 2,
+      center: myLatLng
+    });
+  }
+
+$(document).ready(function(){
+	var tags = [];
+	var allPosts = [];
+ 	$.ajax({
+	    url: "https://api.instagram.com/v1/users/self/media/liked?access_token=187987053.e029fea.aff1ff8e62cf46179db4c286852fedc8",
+	    jsonp: "callback",
+	    dataType: "jsonp",
+	    success: function( response ) {
+	        allPosts = allPosts.concat(response.data);
+	        if ("next_url" in response.pagination) {
+	        	var nextUrl = response.pagination.next_url;
+	        	$.ajax({
+	        		url: nextUrl,
+	        		jsonp: "callback",
+	        		dataType: "jsonp",
+	        		success: function(response1) {
+	        			allPosts = allPosts.concat(response1.data);
+	        			console.log(allPosts);
+	        			showPost (allPosts, 'All');
+	        			addOptions (allPosts);
+	        		}
+	        	})
+	        }
+	    }
+	});
+	$('#slt-tags').on('change', function() {
+	 	showPost(allPosts, $("#slt-tags option:selected").text());
+	})
+
+	function showPost(postsData, tagname) {
+		var postsHtml = "";
+		for (var key in postsData) {
+			if ( tagname != 'All' && postsData[key]['tags'].indexOf(tagname) == -1 )
+				continue;
+			imageUrl = postsData[key]['images']['standard_resolution']['url'];
+			username = postsData[key]['user']['username'];
+			postsHtml += "<div class='img-post'><img id='theImg' src='" + imageUrl + "' /><br>" + username + "</div>";
+
+			if (postsData[key]['location']) {
+				myLatLng.lat = postsData[key]['location']['latitude'];
+				myLatLng.lng = postsData[key]['location']['longitude'];
+
+			    var marker = new google.maps.Marker({
+			      position: myLatLng,
+			      map: map,
+			      title: username
+			    });
+			}
+		}
+		$("#posts").html(postsHtml);
+
+	}
+
+	function addOptions(postsData) {
+		for (var key in postsData) {
+			for (var tagkey in postsData[key]['tags']) {
+				if (tags.indexOf(postsData[key]['tags'][tagkey]) == -1) {
+					tags.push (postsData[key]['tags'][tagkey]);
+				}
+			}	
+		}
+		
+		$.each(tags, function(key, value) {   
+		    $('#slt-tags')
+		        .append($("<option></option>")
+		                    .attr("value",key)
+		                    .text(value)); 
+		});
+	}
+});
+
+</script>
+</html>
